@@ -1,26 +1,26 @@
-Lua TZ README
--------------
+# Lua TZ README
 
-* Introduction
+## Introduction
 
 Lua TZ provides date and time function with support of time zones. Where
 applicable, the functions are similar to the standard functions os.date
 and os.time.
 
 
-* Build, Test and Install
+## Build, Test and Install
 
 Lua TZ comes with a simple Makefile. Please adapt the Makefile, and possibly
 tz.h, to your environment, and then run:
 
+```
   make <platform>
   make test
   make install
+```
 
+## Reference
 
-* Reference
-
-timezone
+`timezone`
 
 A timezone value corresponds to a IANA Time Zone Database name. This typically
 is a string of the format "area/location", e.g. "Europe/Zurich". Generally, any
@@ -29,7 +29,7 @@ including miscellaneous time zones, such as "UTC". The special string
 "localtime" represents the local time zone of the host.
 
 
-time
+`time`
 
 A time value corresponds to the number of seconds since the epoch, ignoring
 leap seconds. The Lua TZ epoch is January 1, 1970 00:00:00 UTC. Time values are
@@ -37,7 +37,7 @@ internally represented as 64-bit signed integers. In Lua 5.1 and 5.2, they
 are represented as numbers (lua_Number).
 
 
-tz.type ([time [, timezone]])
+`tz.type ([time [, timezone]])`
 
 Returns the offset from UTC in seconds, a boolean indicating whether daylight
 saving time is on, and an abbreviated time zone name.
@@ -49,7 +49,7 @@ If the timezone argument is present, this is the time zone to return information
 for. Otherwise, information is returned for the local time zone of the host.
 
 
-tz.date ([format [, time [, timezone]]])
+`tz.date ([format [, time [, timezone]]])`
 
 This function behaves similar to os.date, but additionally accepts a time zone.
 
@@ -63,7 +63,7 @@ to os.date, but with the following additional fields: 'off' (offset from UTC,
 in seconds), 'zone' (abbreviated time zone name).
 
 
-tz.time ([table [, timezone])
+`tz.time ([table [, timezone])`
 
 This function behaves similar to os.time, but additionally accepts a time zone.
 
@@ -75,7 +75,7 @@ If the table argument contains a field 'off', this offset from UTC in seconds
 is applied to the date regardless of the timezone argument.
 
 
-* Limitations
+## Limitations
 
 Lua TZ supports Lua 5.1 and Lua 5.2.
 
@@ -95,6 +95,6 @@ Lua TZ ignores the TZ environment variable, and does not process TZ strings,
 standard/wall, and the UTC/local indicators contained in timezone files.
 
 
-* License
+## License
 
 Lua TZ is released under the MIT license. See LICENSE for license terms.
