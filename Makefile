@@ -1,5 +1,5 @@
-LUA_INCLUDE = /usr/include/lua5.2
-LIB_INSTALL = /usr/local/lib/lua/5.2
+LUA_INCLUDE = /usr/include/lua5.3
+LIB_INSTALL = /usr/local/lib/lua/5.3
 CFLAGS = -pedantic -Wall -Wextra -fPIC -O2 -D_REENTRANT
 LDFLAGS = -shared -fPIC
 

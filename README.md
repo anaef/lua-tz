@@ -85,7 +85,7 @@ is applied to the date regardless of the timezone argument.
 
 ## Limitations
 
-Lua TZ supports Lua 5.1 and Lua 5.2.
+Lua TZ supports Lua 5.1, Lua 5.2, and Lua 5.3.
 
 Lua TZ has been built and tested on Ubuntu Linux (64-bit) and MacOSX.
 
