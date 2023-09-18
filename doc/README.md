@@ -22,7 +22,7 @@ signed integers. In Lua 5.1 and 5.2, they are represented as numbers (`lua_Numbe
 
 ## Functions
 
-### `tz.type ([time [, timezone]])`
+### `tz.info ([time [, timezone]])`
 
 Returns the offset from UTC in seconds, a boolean indicating whether daylight saving time is on,
 and an abbreviated time zone name.

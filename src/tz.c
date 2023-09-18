@@ -69,7 +69,7 @@ static void tz_read(lua_State *L, const char *filename, off_t size);
 static struct tzdata *tz_data(lua_State *L, const char *timezone, size_t len);
 static struct tztype *tz_find(struct tzdata *data, int64_t t, int isdst, int reverse);
 
-static int tz_type(lua_State *L);
+static int tz_info(lua_State *L);
 static int tz_date(lua_State *L);
 static int tz_time(lua_State *L);
 
@@ -375,7 +375,7 @@ static struct tztype *tz_find (struct tzdata *data, int64_t t, int isdst, int re
  * functions
  */
 
-static int tz_type (lua_State *L) {
+static int tz_info (lua_State *L) {
 	size_t          len;
 	int64_t         t;
 	const char     *timezone;
@@ -403,7 +403,7 @@ static int tz_type (lua_State *L) {
 		return 0;
 	}
 
-	/* return time type */
+	/* return time info */
 	lua_pushinteger(L, type->gmtoff);
 	lua_pushboolean(L, type->isdst);
 	lua_pushstring(L, &data->chars[type->abbrind]);
@@ -620,7 +620,8 @@ static int tz_time (lua_State *L) {
 
 int luaopen_tz (lua_State *L) {
 	static const luaL_Reg functions[] = {
-		{ "type", tz_type },
+		{ "info", tz_info },
+		{ "type", tz_info },  /* legacy */
 		{ "date", tz_date },
 		{ "time", tz_time },
 		{ NULL, NULL }

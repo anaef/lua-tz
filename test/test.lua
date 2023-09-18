@@ -17,11 +17,11 @@ for k, v in pairs(t) do assert(t1[k] == v, k) end
 
 -- Core functions (STD)
 local now = 1392456870
-local t = { tz.type(now, "Europe/Zurich") }
+local t = { tz.info(now, "Europe/Zurich") }
 assert(t[1] == 3600)
 assert(t[2] == false)
 assert(t[3] == "CET")
-local t = { tz.type(now, "America/New_York") }
+local t = { tz.info(now, "America/New_York") }
 assert(t[1] == -18000)
 assert(t[2] == false)
 assert(t[3] == "EST")
@@ -56,11 +56,11 @@ assert(tz.time(t) == now)
 
 -- Core functions (DST)
 local now = 1396173237
-local t = { tz.type(now, "Europe/Zurich") }
+local t = { tz.info(now, "Europe/Zurich") }
 assert(t[1] == 7200)
 assert(t[2] == true)
 assert(t[3] == "CEST")
-local t = { tz.type(now, "America/New_York") }
+local t = { tz.info(now, "America/New_York") }
 assert(t[1] == -14400)
 assert(t[2] == true)
 assert(t[3] == "EDT")
@@ -94,11 +94,11 @@ assert(t.zone == "EDT")
 assert(tz.time(t) == now)
 
 -- Time change to DST
-local t = { tz.type(1396141199) }
+local t = { tz.info(1396141199) }
 assert(t[1] == 3600)
 assert(t[2] == false)
 assert(t[3] == "CET")
-local t = { tz.type(1396141200) }
+local t = { tz.info(1396141200) }
 assert(t[1] == 7200)
 assert(t[2] == true)
 assert(t[3] == "CEST")
@@ -119,11 +119,11 @@ t.hour = 3
 assert(tz.time(t, "Europe/Zurich") == 1396141200)
 
 -- Time change to STD
-local t = { tz.type(1382835599) }
+local t = { tz.info(1382835599) }
 assert(t[1] == 7200)
 assert(t[2] == true)
 assert(t[3] == "CEST")
-local t = { tz.type(1382835600) }
+local t = { tz.info(1382835600) }
 assert(t[1] == 3600)
 assert(t[2] == false)
 assert(t[3] == "CET")
