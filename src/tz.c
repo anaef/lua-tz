@@ -415,6 +415,7 @@ static int tz_date (lua_State *L) {
 	char            buffer[256];
 	size_t          len;
 	int64_t         t;
+	struct tm       tm;
 	const char     *format, *timezone;
 	tzcomponent     sec, min, hour, day, month, year, wday, yday;
 	tzcomponent     jd, l, n, i, j;
@@ -497,8 +498,6 @@ static int tz_date (lua_State *L) {
 				lua_setfield(L, -2, "zone");
 			}
 		} else {
-			struct tm tm;
-
 			tm.tm_sec = (int)sec;
 			tm.tm_min = (int)min;
 			tm.tm_hour = (int)hour;
@@ -509,16 +508,16 @@ static int tz_date (lua_State *L) {
 			tm.tm_yday = (int)(yday - 1);
 			if (type) {
 				tm.tm_isdst = type->isdst;
-#ifdef _BSD_SOURCE
+#if defined(_BSD_SOURCE) || defined(_DEFAULT_SOURCE)
 				tm.tm_gmtoff = type->gmtoff;
 				tm.tm_zone = &data->chars[type->abbrind];
-#endif /* _BSD_SOURCE */
+#endif
 			} else {
 				tm.tm_isdst = -1;
-#ifdef _BSD_SOURCE
+#if defined(_BSD_SOURCE) || defined(_DEFAULT_SOURCE)
 				tm.tm_gmtoff = 0;
 				tm.tm_zone = "";
-#endif /* _BSD_SOURCE */
+#endif
 			}
 			if (strftime(buffer, sizeof(buffer), format, &tm)) {
 				lua_pushstring(L, buffer);
