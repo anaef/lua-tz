@@ -358,12 +358,13 @@ static struct tztype *tz_find (struct tzdata *data, int64_t t, int isdst, int re
 				upper = mid - 1;
 			}
 		}
-	}
-	
-	/* match DST as needed */
-	if (isdst >= 0) {
-		while (upper >= 0 && data->types[data->timetypes[upper]].isdst != isdst) {
-			upper--;
+		if (isdst >= 0 && data->types[data->timetypes[upper]].isdst != isdst && upper > 0
+				&& data->types[data->timetypes[upper - 1]].isdst == isdst
+				&& (t - data->types[data->timetypes[upper]].gmtoff)
+				- data->timevalues[upper]
+				< data->types[data->timetypes[upper - 1]].gmtoff
+				- data->types[data->timetypes[upper]].gmtoff) {
+			upper--;  /* use 'hour a' instead of the default 'hour b' */
 		}
 	}
 
