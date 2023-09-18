@@ -303,13 +303,13 @@ static struct tzdata *tz_data (lua_State *L, const char *timezone, size_t len) {
 	} else {
 		/* check timezone length */
 		if (len > sizeof(filename) - sizeof(LUATZ_ZONEINFO)) {
-			luaL_error(L, "time zone too long");
+			luaL_error(L, "timezone too long");
 		}
 
 		/* make sure we do not read an arbitrary file */
 		for (i = 0; i < len; i++) {
 			if (!isalnum(timezone[i]) && (!ispunct(timezone[i]) || timezone[i] == '.')) {
-				luaL_error(L, "malformed time zone " LUA_QS, timezone);
+				luaL_error(L, "malformed timezone " LUA_QS, timezone);
 			}
 		}
 
@@ -320,7 +320,7 @@ static struct tzdata *tz_data (lua_State *L, const char *timezone, size_t len) {
 
 	/* check file */
 	if (stat(filename, &buf) != 0 || !S_ISREG(buf.st_mode)) {
-		luaL_error(L, "unknown time zone " LUA_QS, timezone);
+		luaL_error(L, "unknown timezone " LUA_QS, timezone);
 	}
 
 	/* read */
