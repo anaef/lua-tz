@@ -24,10 +24,10 @@
 #include <lauxlib.h>
 
 
-#define TZTYPE_PACKED  (size_t)(6)
+#define TZ_TYPE_PACKED  (size_t)(6)
 
 
-struct tzheader {
+struct tz_header {
 	char     magic[4];
 	char     version;
 	char     reserved[15];
@@ -39,35 +39,35 @@ struct tzheader {
 	int32_t  charcnt;
 };
 
-struct tztype {
+struct tz_type {
 	int32_t  gmtoff;
 	int8_t   isdst;
 	uint8_t  abbrind;
 };
 
-struct tzdata {
-	struct tzheader  header;
-	int64_t         *timevalues;  /* header.timecnt */
-	uint8_t         *timetypes;   /* header.timecnt */
-	struct tztype   *types;       /* header.typecnt */
-	char            *chars;       /* header.charcnt */
-	struct tztype   *dfltype;
+struct tz_data {
+	struct tz_header  header;
+	int64_t          *timevalues;  /* header.timecnt */
+	uint8_t          *timetypes;   /* header.timecnt */
+	struct tz_type   *types;       /* header.typecnt */
+	char             *chars;       /* header.charcnt */
 };
 
-typedef LUATZ_COMPONENT  tzcomponent;
 
-
-static tzcomponent getfield(lua_State *L, int index, const char *key, tzcomponent d);
-static inline void setfield(lua_State *L, const char *key, tzcomponent value);
-static inline int days(tzcomponent year, tzcomponent month);
+static int getfield(lua_State *L, int index, const char *key, int d);
+static inline void setfield(lua_State *L, const char *key, int value);
+static inline int days(int year, int month);
+#if LUA_VERSION_NUM < 502
+void *luaL_testudata(lua_State *L, int index, const char *name);
+#endif
 
 static int tz_tostring(lua_State *L);
 static int tz_gc(lua_State *L);
 
-static void tz_readheader(lua_State *L, FILE *f, off_t size, struct tzheader *header);
+static void tz_readheader(lua_State *L, FILE *f, off_t size, struct tz_header *header);
 static void tz_read(lua_State *L, const char *filename, off_t size);
-static struct tzdata *tz_data(lua_State *L, const char *timezone, size_t len);
-static struct tztype *tz_find(struct tzdata *data, int64_t t, int isdst, int reverse);
+static struct tz_data *tz_data(lua_State *L, const char *timezone, size_t len);
+static struct tz_type *tz_find(struct tz_data *data, int64_t t, int isdst, int reverse);
 
 static int tz_info(lua_State *L);
 static int tz_date(lua_State *L);
@@ -84,56 +84,82 @@ static const int DAYS_PER_MONTH[2][12] = {
  * utilities
  */
 
-static tzcomponent getfield (lua_State *L, int index, const char *key, tzcomponent d) {
-	tzcomponent  value;
+static int getfield (lua_State *L, int index, const char *key, int d) {
+	int  value;
+#if LUA_VERSION_NUM >= 503
+	int  isint;
+#endif
 
 	lua_getfield(L, index, key);
 	if (lua_isnumber(L, -1)) {
-		value = (tzcomponent)lua_tointeger(L, -1);
+#if LUA_VERSION_NUM >= 503
+		value = lua_tointegerx(L, -1, &isint);
+		if (!isint) {
+			return luaL_error(L, "field " LUA_QS " is not an integer", key);
+		}
+#else
+		value = lua_tointeger(L, -1);
+#endif
 	} else if (lua_isnil(L, -1)) {
 		if (d < 0) {
 			luaL_error(L, "field " LUA_QS " is missing", key);
 		}
 		value = d;
 	} else {
-		luaL_error(L, "field " LUA_QS " has wrong type (number expected, got %s)", key,
-				luaL_typename(L, -1));
-		return 0;  /* not reached */
+		return luaL_error(L, "field " LUA_QS " has wrong type (number expected, got %s)",
+				key, luaL_typename(L, -1));
 	}
 	lua_pop(L, 1);
 	return value;
 }
 
-static inline void setfield (lua_State *L, const char *key, tzcomponent value) {
-	lua_pushinteger(L, (lua_Integer)value);
+static inline void setfield (lua_State *L, const char *key, int value) {
+	lua_pushinteger(L, value);
 	lua_setfield(L, -2, key);
 }
 
-static inline int days (tzcomponent year, tzcomponent month) {
+static inline int days (int year, int month) {
 	return DAYS_PER_MONTH[year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)][month - 1];
 }
 
+#if LUA_VERSION_NUM < 502
+void *luaL_testudata (lua_State *L, int index, const char *name) {
+	void  *userdata;
+
+	userdata = lua_touserdata(L, index);
+	if (!userdata || !lua_getmetatable(L, index)) {
+		return NULL;
+	}
+	luaL_getmetatable(L, name);
+	if (!lua_rawequal(L, -1, -2)) {
+		userdata = NULL;
+	}
+	lua_pop(L, 2);
+	return userdata;
+}
+#endif
+
 
 /*
- * tz type
+ * TZ data
  */
 
 static int tz_tostring (lua_State *L) {
-	struct tzdata  *tzdata;
+	struct tz_data  *data;
 
-	tzdata = luaL_checkudata(L, 1, LUATZ_METATABLE);
-	lua_pushfstring(L, LUATZ_METATABLE ": %p", tzdata);
+	data = luaL_checkudata(L, 1, LUATZ_METATABLE);
+	lua_pushfstring(L, LUATZ_METATABLE ": %p", data);
 	return 1;
 }
 
 static int tz_gc (lua_State *L) {
-	struct tzdata  *tzdata;
+	struct tz_data  *data;
 
-	tzdata = luaL_checkudata(L, 1, LUATZ_METATABLE);
-	free(tzdata->timevalues);
-	free(tzdata->timetypes);
-	free(tzdata->types);
-	free(tzdata->chars);
+	data = luaL_checkudata(L, 1, LUATZ_METATABLE);
+	free(data->timevalues);
+	free(data->timetypes);
+	free(data->types);
+	free(data->chars);
 	return 0;
 }
 
@@ -142,9 +168,9 @@ static int tz_gc (lua_State *L) {
  * zoneinfo
  */
 
-static void tz_readheader (lua_State *L, FILE *f, off_t size, struct tzheader *header) {
+static void tz_readheader (lua_State *L, FILE *f, off_t size, struct tz_header *header) {
 	/* read and check header */
-	if (fread(header, sizeof(struct tzheader), 1, f) != 1) {
+	if (fread(header, sizeof(struct tz_header), 1, f) != 1) {
 		fclose(f);
 		luaL_error(L, "cannot read TZ file header");
 	}
@@ -154,7 +180,7 @@ static void tz_readheader (lua_State *L, FILE *f, off_t size, struct tzheader *h
 	}
 	if (header->version != '\0' && header->version != '2' && header->version != '3') {
 		fclose(f);
-		luaL_error(L, "TZ file version unsupported");
+		luaL_error(L, "unsupported TZ file version");
 	}
 
 	/* convert */
@@ -167,27 +193,28 @@ static void tz_readheader (lua_State *L, FILE *f, off_t size, struct tzheader *h
 
 	/* sanity checks */
 	if ((size_t)header->timecnt > size / sizeof(uint8_t)
-			|| (size_t)header->typecnt > size / TZTYPE_PACKED
-			|| (size_t)header->charcnt > size / sizeof(char)) {
+			|| (size_t)header->typecnt > size / TZ_TYPE_PACKED
+			|| (size_t)header->charcnt > size / sizeof(char)
+			|| header->typecnt == 0) {
 		fclose(f);
 		luaL_error(L, "malformed TZ file");
 	}
 }
 
 static void tz_read (lua_State *L, const char *filename, off_t size) {
-	int              i, read64;
-	char            *type;
-	FILE            *f;
-	int32_t         *timevalue32;
-	struct tzdata   *data;
-	struct tzheader *header;
+	int               i, read64;
+	char             *type;
+	FILE             *f;
+	int32_t          *timevalue32;
+	struct tz_data   *data;
+	struct tz_header *header;
 
 	/* allocate userdata */
-	data = lua_newuserdata(L, sizeof(struct tzdata));
-	memset(data, 0, sizeof(struct tzdata));
-	header = &data->header;
+	data = lua_newuserdata(L, sizeof(struct tz_data));
+	memset(data, 0, sizeof(struct tz_data));
 	luaL_getmetatable(L, LUATZ_METATABLE);
 	lua_setmetatable(L, -2);
+	header = &data->header;
 
 	/* read and process header */
 	f = fopen(filename, "r");
@@ -200,12 +227,11 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 	read64 = header->version >= '2';
 	if (read64) {
 		if (fseek(f, header->timecnt * (sizeof(int32_t) + sizeof(uint8_t))
-				+ header->typecnt * TZTYPE_PACKED
+				+ header->typecnt * TZ_TYPE_PACKED
 				+ header->charcnt * sizeof(char)
 				+ header->leapcnt * (sizeof(int32_t) + sizeof(int32_t))
 				+ header->isstdcnt * sizeof(uint8_t)
-				+ header->isgmtcnt * sizeof(uint8_t),
-				SEEK_CUR) != 0) {
+				+ header->isgmtcnt * sizeof(uint8_t), SEEK_CUR) != 0) {
 			fclose(f);
 			luaL_error(L, "cannot read TZ file");
 		}
@@ -215,11 +241,11 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 	/* allocate */
 	data->timevalues = calloc(header->timecnt, sizeof(int64_t));
 	data->timetypes = calloc(header->timecnt, sizeof(uint8_t));
-	data->types = calloc(header->typecnt, sizeof(struct tztype));
+	data->types = calloc(header->typecnt, sizeof(struct tz_type));
 	data->chars = calloc(header->charcnt, sizeof(char));
 	if (!(data->timevalues && data->timetypes && data->types && data->chars)) {
 		fclose(f);
-		luaL_error(L, "cannot allocate TZ data memory");
+		luaL_error(L, "cannot allocate TZ data");
 	}
 
 	/* read */
@@ -229,7 +255,7 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 			header->timecnt, f) != (size_t)header->timecnt)
 			|| fread(data->timetypes, sizeof(uint8_t),
 			header->timecnt, f) != (size_t)header->timecnt
-			|| fread(data->types, TZTYPE_PACKED,
+			|| fread(data->types, TZ_TYPE_PACKED,
 			header->typecnt, f) != (size_t)header->typecnt
 			|| fread(data->chars, sizeof(char),
 			header->charcnt, f) != (size_t)header->charcnt) {
@@ -246,8 +272,7 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 	} else {
 		timevalue32 = ((int32_t *)data->timevalues) + header->timecnt;
 		for (i = header->timecnt - 1; i >= 0; i--) {
-			timevalue32--;
-			data->timevalues[i] = be32toh(*timevalue32);
+			data->timevalues[i] = be32toh(*--timevalue32);
 		}
 	}
 	for (i = 0; i < data->header.timecnt; i++) {
@@ -255,44 +280,34 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 			luaL_error(L, "malformed TZ file");
 		}
 	}
-	type = (char *)data->types + header->typecnt * TZTYPE_PACKED;
+	type = (char *)data->types + header->typecnt * TZ_TYPE_PACKED;
 	for (i = header->typecnt - 1; i >= 0; i--) {
-		type -= TZTYPE_PACKED;
-		memmove(&data->types[i], type, TZTYPE_PACKED);
+		type -= TZ_TYPE_PACKED;
+		memmove(&data->types[i], type, TZ_TYPE_PACKED);
 		data->types[i].gmtoff = be32toh(data->types[i].gmtoff);
 		data->types[i].isdst = !!data->types[i].isdst;
-
-		/* set the first non-dst type as default */
-		if (!data->types[i].isdst) {
-			data->dfltype = &data->types[i];
-		}
-	}
-
-	/* otherwise, use the very first type (if any) as the default type */	
-	if (!data->dfltype && header->typecnt > 0) {
-		data->dfltype = &data->types[0];
 	}
 }
 
-static struct tzdata *tz_data (lua_State *L, const char *timezone, size_t len) {
-	size_t          i;
-	char            filename[128];
-	struct stat     buf;
-	struct tzdata  *tzdata;
+static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) {
+	size_t           i;
+	char             filename[128];
+	struct stat      buf;
+	struct tz_data  *data;
 
 	/* get from TZ table */
-	if (lua_getfield(L, LUA_REGISTRYINDEX, LUATZ_KEY) != LUA_TTABLE) {
+	lua_getfield(L, LUA_REGISTRYINDEX, LUATZ_KEY);
+	if (lua_type(L, -1) != LUA_TTABLE) {
 		lua_pop(L, 1);
 		lua_newtable(L);
 		lua_pushvalue(L, -1);
 		lua_setfield(L, LUA_REGISTRYINDEX, LUATZ_KEY);
 	}
-	if (lua_getfield(L, -1, timezone) == LUA_TUSERDATA) {
-		tzdata = luaL_testudata(L, -1, LUATZ_METATABLE);
-		if (tzdata) {
-			lua_remove(L, -2);
-			return tzdata;
-		}
+	lua_getfield(L, -1, timezone);
+	data = luaL_testudata(L, -1, LUATZ_METATABLE);
+	if (data) {
+		lua_remove(L, -2);
+		return data;
 	}
 	lua_pop(L, 1);
 
@@ -308,7 +323,8 @@ static struct tzdata *tz_data (lua_State *L, const char *timezone, size_t len) {
 
 		/* make sure we do not read an arbitrary file */
 		for (i = 0; i < len; i++) {
-			if (!isalnum(timezone[i]) && (!ispunct(timezone[i]) || timezone[i] == '.')) {
+			if (!isalnum(timezone[i]) && (!ispunct(timezone[i])
+					|| timezone[i] == '.')) {
 				luaL_error(L, "malformed timezone " LUA_QS, timezone);
 			}
 		}
@@ -335,7 +351,7 @@ static struct tzdata *tz_data (lua_State *L, const char *timezone, size_t len) {
 	return lua_touserdata(L, -1);
 }
 
-static struct tztype *tz_find (struct tzdata *data, int64_t t, int isdst, int reverse) {
+static struct tz_type *tz_find (struct tz_data *data, int64_t t, int isdst, int reverse) {
 	int  lower, upper, mid;
 
 	lower = 0;
@@ -358,17 +374,18 @@ static struct tztype *tz_find (struct tzdata *data, int64_t t, int isdst, int re
 				upper = mid - 1;
 			}
 		}
-		if (isdst >= 0 && data->types[data->timetypes[upper]].isdst != isdst && upper > 0
-				&& data->types[data->timetypes[upper - 1]].isdst == isdst
-				&& (t - data->types[data->timetypes[upper]].gmtoff)
-				- data->timevalues[upper]
-				< data->types[data->timetypes[upper - 1]].gmtoff
-				- data->types[data->timetypes[upper]].gmtoff) {
+		if (isdst >= 0  /* isdst is specified */
+				&& data->types[data->timetypes[upper]].isdst != isdst  /* not eq */
+				&& upper > 0  /* predecessor exists */
+				&& data->types[data->timetypes[upper - 1]].isdst == isdst  /* eq */
+				&& (t - data->types[data->timetypes[upper]].gmtoff)  /* UTC time */
+				- data->timevalues[upper]  /* seconds into new type */
+				< (data->types[data->timetypes[upper - 1]].gmtoff
+				- data->types[data->timetypes[upper]].gmtoff)) {  /* off decrease */
 			upper--;  /* use 'hour a' instead of the default 'hour b' */
 		}
 	}
-
-	return upper >= 0 ? &data->types[data->timetypes[upper]] : data->dfltype;
+	return upper >= 0 ? &data->types[data->timetypes[upper]] : &data->types[0];
 }
 
 
@@ -377,11 +394,11 @@ static struct tztype *tz_find (struct tzdata *data, int64_t t, int isdst, int re
  */
 
 static int tz_info (lua_State *L) {
-	size_t          len;
-	int64_t         t;
-	const char     *timezone;
-	struct tzdata  *data;
-	struct tztype  *type;
+	size_t           len;
+	int64_t          t;
+	const char      *timezone;
+	struct tz_data  *data;
+	struct tz_type  *type;
 
 	/* check arguments */
 	if (lua_isnoneornil(L, 1)) {
@@ -395,16 +412,9 @@ static int tz_info (lua_State *L) {
 	}
 	timezone = luaL_optlstring(L, 2, LUATZ_LOCALTIME, &len);
 
-	/* get time zone data */
+	/* get time zone data, find type, and return time info */
 	data = tz_data(L, timezone, len);
-
-	/* find type */
 	type = tz_find(data, t, -1, 0);
-	if (!type) {
-		return 0;
-	}
-
-	/* return time info */
 	lua_pushinteger(L, type->gmtoff);
 	lua_pushboolean(L, type->isdst);
 	lua_pushstring(L, &data->chars[type->abbrind]);
@@ -412,15 +422,15 @@ static int tz_info (lua_State *L) {
 }
 
 static int tz_date (lua_State *L) {
-	char            buffer[256];
-	size_t          len;
-	int64_t         t;
-	struct tm       tm;
-	const char     *format, *timezone;
-	tzcomponent     sec, min, hour, day, month, year, wday, yday;
-	tzcomponent     jd, l, n, i, j;
-	struct tzdata  *data;
-	struct tztype  *type;
+	int              jd, l, n, i, j;
+	int              sec, min, hour, day, month, year, wday, yday;
+	char             buffer[256];
+	size_t           len;
+	int64_t          t;
+	struct tm        tm;
+	const char      *format, *timezone;
+	struct tz_data  *data;
+	struct tz_type  *type;
 
 	/* process arguments */
 	format = luaL_optstring(L, 1, "%c");
@@ -443,9 +453,7 @@ static int tz_date (lua_State *L) {
 	/* get timezone data, find type, and apply offset */
 	data = tz_data(L, timezone, len);
 	type = tz_find(data, t, -1, 0);
-	if (type) {
-		t += type->gmtoff;
-	}
+	t += type->gmtoff;
 
 	/* make date */
 	if (t >= LUATZ_J0_TIME) {
@@ -490,35 +498,25 @@ static int tz_date (lua_State *L) {
 			setfield(L, "year", year);
 			setfield(L, "wday", wday);
 			setfield(L, "yday", yday);
-			if (type) {
-				lua_pushboolean(L, type->isdst);
-				lua_setfield(L, -2, "isdst");
-				setfield(L, "off", type->gmtoff);
-				lua_pushstring(L, &data->chars[type->abbrind]);
-				lua_setfield(L, -2, "zone");
-			}
+			lua_pushboolean(L, type->isdst);
+			lua_setfield(L, -2, "isdst");
+			setfield(L, "off", type->gmtoff);
+			lua_pushstring(L, &data->chars[type->abbrind]);
+			lua_setfield(L, -2, "zone");
 		} else {
-			tm.tm_sec = (int)sec;
-			tm.tm_min = (int)min;
-			tm.tm_hour = (int)hour;
-			tm.tm_mday = (int)day;
-			tm.tm_mon = (int)(month - 1);
-			tm.tm_year = (int)(year - 1900);
-			tm.tm_wday = (int)(wday - 1);
-			tm.tm_yday = (int)(yday - 1);
-			if (type) {
-				tm.tm_isdst = type->isdst;
+			tm.tm_sec = sec;
+			tm.tm_min = min;
+			tm.tm_hour = hour;
+			tm.tm_mday = day;
+			tm.tm_mon = month - 1;
+			tm.tm_year = year - 1900;
+			tm.tm_wday = wday - 1;
+			tm.tm_yday = yday - 1;
+			tm.tm_isdst = type->isdst;
 #if defined(_BSD_SOURCE) || defined(_DEFAULT_SOURCE)
-				tm.tm_gmtoff = type->gmtoff;
-				tm.tm_zone = &data->chars[type->abbrind];
+			tm.tm_gmtoff = type->gmtoff;
+			tm.tm_zone = &data->chars[type->abbrind];
 #endif
-			} else {
-				tm.tm_isdst = -1;
-#if defined(_BSD_SOURCE) || defined(_DEFAULT_SOURCE)
-				tm.tm_gmtoff = 0;
-				tm.tm_zone = "";
-#endif
-			}
 			if (strftime(buffer, sizeof(buffer), format, &tm)) {
 				lua_pushstring(L, buffer);
 			} else {
@@ -532,13 +530,13 @@ static int tz_date (lua_State *L) {
 }
 
 static int tz_time (lua_State *L) {
-	int             isdst, hastimezone, hasoff;
-	size_t          len;
-	int64_t         t;
-	const char     *timezone;
-	tzcomponent     sec, min, hour, day, month, year;
-	struct tzdata  *data;
-	struct tztype  *type;
+	int              isdst, hastimezone, hasoff;
+	int              sec, min, hour, day, month, year;
+	size_t           len;
+	int64_t          t;
+	const char      *timezone;
+	struct tz_data  *data;
+	struct tz_type  *type;
 
         if (lua_isnoneornil(L, 1)) {
 		t = (int64_t)time(NULL);
@@ -550,7 +548,7 @@ static int tz_time (lua_State *L) {
 		/* process arguments */
 		luaL_checktype(L, 1, LUA_TTABLE);
 		timezone = luaL_optlstring(L, 2, LUATZ_LOCALTIME, &len);
-		hastimezone = lua_gettop(L) >= 2;
+		hastimezone = !lua_isnoneornil(L, 2);
 
 		/* get time in UTC */
 		sec = getfield(L, 1, "sec", 0);
@@ -559,7 +557,8 @@ static int tz_time (lua_State *L) {
 		day = getfield(L, 1, "day", -1);
 		month = getfield(L, 1, "month", -1);
 		year = getfield(L, 1, "year", -1);
-		isdst = lua_getfield(L, 1, "isdst") != LUA_TNIL ? lua_toboolean(L, -1) : -1;
+		lua_getfield(L, 1, "isdst");
+		isdst = !lua_isnil(L, -1) ? lua_toboolean(L, -1): -1;
 		lua_getfield(L, 1, "off");
 		hasoff = !lua_isnil(L, -1);
 		lua_pop(L, 2);
@@ -596,9 +595,7 @@ static int tz_time (lua_State *L) {
 		} else {
 			data = tz_data(L, timezone, len);
 			type = tz_find(data, t, isdst, 1);
-			if (type) {
-				t -= type->gmtoff;
-			}
+			t -= type->gmtoff;
 		}
 		if (t < LUATZ_J0_TIME) {
 			lua_pushnil(L);

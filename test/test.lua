@@ -4,7 +4,9 @@ local tz = require "tz"
 local ISO = "%Y-%m-%dT%H:%M:%S"
 
 -- Compare with standard functions
-if os.getenv("TZ") then print("WARNING: TZ variable set; tests may fail") end
+if os.getenv("TZ") then
+	print("WARNING: TZ variable set; tests may fail")
+end
 local now = os.time()
 assert(tz.date(nil, now) == os.date(nil, now))
 assert(tz.date("%c", now) == os.date("%c", now))
@@ -13,7 +15,9 @@ assert(math.abs(tz.time() - os.time()) <= 1)
 local t = os.date("*t", now)
 assert(tz.time(t) == os.time(t))
 local t1 = tz.date("*t", now)
-for k, v in pairs(t) do assert(t1[k] == v, k) end
+for k, v in pairs(t) do
+	assert(t1[k] == v, k)
+end
 
 -- Core functions (STD)
 local now = 1392456870
@@ -96,7 +100,6 @@ assert(tz.time(t, "Europe/Zurich") ~= now)
 t.off = nil
 assert(tz.time(t, "America/New_York") == now)
 
-
 -- Time change to DST
 local t = { tz.info(1396141199) }
 assert(t[1] == 3600)
@@ -142,11 +145,11 @@ local t = {
 	sec = 59
 }
 assert(tz.time(t, "Europe/Zurich") == 1382831999)
-t.hour, t.min, t.sec = 2, 0, 0 -- hour "2b" default
+t.hour, t.min, t.sec = 2, 0, 0  -- 'hour 2b' default
 assert(tz.time(t, "Europe/Zurich") == 1382835600) 
-t.isdst = true -- force hour "2a"
+t.isdst = true  -- force 'hour 2a'
 assert(tz.time(t, "Europe/Zurich") == 1382832000)
-t.isdst = false -- force hour "2b"
+t.isdst = false  -- force 'hour 2b"
 assert(tz.time(t, "Europe/Zurich") == 1382835600)
 t.hour = 3
 assert(tz.time(t, "Europe/Zurich") == 1382839200)
@@ -164,10 +167,8 @@ assert(tz.time({ year = 2012, month = 2, day = 30 })
 		== tz.time({ year = 2012, month = 3, day = 1 }))
 assert(tz.time({ year = 2012, month = 3, day = 0 })
 		== tz.time({ year = 2012, month = 2, day = 29 }))
-assert(tz.time({ year = 2014, month = 1, day = 31, hour = 25, min = 61,
-		sec = 61 })
-		== tz.time({ year = 2014, month = 2, day = 1, hour = 2,
-		min = 2, sec = 1 }))
+assert(tz.time({ year = 2014, month = 1, day = 31, hour = 25, min = 61,	sec = 61 })
+		== tz.time({ year = 2014, month = 2, day = 1, hour = 2,	min = 2, sec = 1 }))
 assert(tz.time({ year = 2010, month = 1, day = 10 + 365 * 3 + 366 })
 		== tz.time({ year = 2014, month = 1, day = 10 }))
 assert(tz.time({ year = 2010, month = 1 + 49, day = 10 })
@@ -179,10 +180,8 @@ assert(tz.time({ year = 2014, month = 1 - 47, day = 10 })
 
 -- Zero dates
 assert(tz.time({ year = 1970, month = 1, day = 1, hour = 0, off = 0 }) == 0)
-assert(tz.time({ year = 1970, month = 1, day = 1, hour = 0, sec = 1, off = 0 })
-		== 1)
-assert(tz.time({ year = 1969, month = 12, day = 31, hour = 23, min = 59,
-		sec = 59, off = 0 }) == -1)
+assert(tz.time({ year = 1970, month = 1, day = 1, hour = 0, sec = 1, off = 0 })	== 1)
+assert(tz.time({ year = 1969, month = 12, day = 31, hour = 23, min = 59, sec = 59, off = 0 }) == -1)
 assert(tz.date(ISO, 0, "UTC") == "1970-01-01T00:00:00")
 assert(tz.date(ISO, 1, "UTC") == "1970-01-01T00:00:01")
 assert(tz.date(ISO, -1, "UTC") == "1969-12-31T23:59:59")

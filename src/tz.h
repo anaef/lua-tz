@@ -12,7 +12,6 @@
 #include <lua.h>
 
 
-#define LUATZ_COMPONENT  int                     /* time component type; must be at least 32 bit */
 #define LUATZ_LOCALFILE  "/etc/localtime"        /* local time TZ file */
 #define LUATZ_ZONEINFO   "/usr/share/zoneinfo/"  /* path where generic TZ files reside */
 #define LUATZ_LOCALTIME  "localtime"             /* local time zone */
