@@ -92,6 +92,10 @@ assert(t.isdst == true)
 assert(t.off == -14400)
 assert(t.zone == "EDT")
 assert(tz.time(t) == now)
+assert(tz.time(t, "Europe/Zurich") ~= now)
+t.off = nil
+assert(tz.time(t, "America/New_York") == now)
+
 
 -- Time change to DST
 local t = { tz.info(1396141199) }

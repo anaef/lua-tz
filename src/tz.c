@@ -532,7 +532,7 @@ static int tz_date (lua_State *L) {
 }
 
 static int tz_time (lua_State *L) {
-	int             isdst, hasoff;
+	int             isdst, hastimezone, hasoff;
 	size_t          len;
 	int64_t         t;
 	const char     *timezone;
@@ -550,6 +550,7 @@ static int tz_time (lua_State *L) {
 		/* process arguments */
 		luaL_checktype(L, 1, LUA_TTABLE);
 		timezone = luaL_optlstring(L, 2, LUATZ_LOCALTIME, &len);
+		hastimezone = lua_gettop(L) >= 2;
 
 		/* get time in UTC */
 		sec = getfield(L, 1, "sec", 0);
@@ -558,8 +559,7 @@ static int tz_time (lua_State *L) {
 		day = getfield(L, 1, "day", -1);
 		month = getfield(L, 1, "month", -1);
 		year = getfield(L, 1, "year", -1);
-		lua_getfield(L, 1, "isdst");
-		isdst = lua_isnil(L, -1) ? -1 : lua_toboolean(L, -1);
+		isdst = lua_getfield(L, 1, "isdst") != LUA_TNIL ? lua_toboolean(L, -1) : -1;
 		lua_getfield(L, 1, "off");
 		hasoff = !lua_isnil(L, -1);
 		lua_pop(L, 2);
@@ -591,7 +591,7 @@ static int tz_time (lua_State *L) {
 		}
 
 		/* adjust */
-		if (hasoff) {
+		if (hasoff && !hastimezone) {
 			t -= getfield(L, 1, "off", -1);
 		} else {
 			data = tz_data(L, timezone, len);
