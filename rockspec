@@ -2,7 +2,7 @@ rockspec_format = "3.0"
 package = "lua-tz"
 version = "1.0.0-1"
 description = {
-	summary = "Date and time functions with support for time zones",
+	summary = "Lua date and time functions with time zones",
 	detailed = [[
 		Lua TZ provides date and time functions with support for time zones. The
 		core functions have an interface similar to the standard functions os.date
