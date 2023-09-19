@@ -95,18 +95,18 @@ static int getfield (lua_State *L, int index, const char *key, int d) {
 #if LUA_VERSION_NUM >= 503
 		value = lua_tointegerx(L, -1, &isint);
 		if (!isint) {
-			return luaL_error(L, "field " LUA_QS " is not an integer", key);
+			return luaL_error(L, "field '%s' is not an integer", key);
 		}
 #else
 		value = lua_tointeger(L, -1);
 #endif
 	} else if (lua_isnil(L, -1)) {
 		if (d < 0) {
-			luaL_error(L, "field " LUA_QS " is missing", key);
+			luaL_error(L, "field '%s' is missing", key);
 		}
 		value = d;
 	} else {
-		return luaL_error(L, "field " LUA_QS " has wrong type (number expected, got %s)",
+		return luaL_error(L, "field '%s' has wrong type (number expected, got %s)",
 				key, luaL_typename(L, -1));
 	}
 	lua_pop(L, 1);
@@ -219,7 +219,7 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 	/* read and process header */
 	f = fopen(filename, "r");
 	if (!f) {
-		luaL_error(L, "cannot open TZ file " LUA_QS, filename);
+		luaL_error(L, "cannot open TZ file '%s'", filename);
 	}
 	tz_readheader(L, f, size, header);
 
@@ -325,7 +325,7 @@ static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) 
 		for (i = 0; i < len; i++) {
 			if (!isalnum(timezone[i]) && (!ispunct(timezone[i])
 					|| timezone[i] == '.')) {
-				luaL_error(L, "malformed timezone " LUA_QS, timezone);
+				luaL_error(L, "malformed timezone '%s'", timezone);
 			}
 		}
 
@@ -336,7 +336,7 @@ static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) 
 
 	/* check file */
 	if (stat(filename, &buf) != 0 || !S_ISREG(buf.st_mode)) {
-		luaL_error(L, "unknown timezone " LUA_QS, timezone);
+		luaL_error(L, "unknown timezone '%s'", timezone);
 	}
 
 	/* read */
