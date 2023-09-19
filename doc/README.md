@@ -42,7 +42,7 @@ If the `timezone` argument is present, the date is formatted in that time zone. 
 time zone defaults to the local time zone of the host.
 
 If the `format` argument starts with `'!'`, then the date is formated in UTC regardless of the
-`timezone` argument. After this optional character, if the format argument is the string `"\*t"`,
+`timezone` argument. After this optional character, if the format argument is the string `"*t"`,
 then the function returns a table similar to `os.date`, but with the following additional fields:
 
 * `off` (offset from UTC, in seconds)
