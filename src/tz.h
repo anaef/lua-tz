@@ -23,7 +23,7 @@
 #define LUATZ_J0_YEAR    -4713                   /* Julian day 0 year (November 24, -4713) */
 
 
-int luaopen_tz (lua_State *L);
+int luaopen_tz(lua_State *L);
 
 
 #endif  /* _LUATZ_INCLUDED */

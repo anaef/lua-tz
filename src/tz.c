@@ -618,7 +618,7 @@ static int tz_time (lua_State *L) {
 int luaopen_tz (lua_State *L) {
 	static const luaL_Reg functions[] = {
 		{ "info", tz_info },
-		{ "type", tz_info },  /* legacy */
+		{ "type", tz_info },  /* deprecated */
 		{ "date", tz_date },
 		{ "time", tz_time },
 		{ NULL, NULL }
