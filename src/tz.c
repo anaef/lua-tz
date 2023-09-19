@@ -147,15 +147,15 @@ void *luaL_testudata (lua_State *L, int index, const char *name) {
 static int tz_tostring (lua_State *L) {
 	struct tz_data  *data;
 
-	data = luaL_checkudata(L, 1, LUATZ_METATABLE);
-	lua_pushfstring(L, LUATZ_METATABLE ": %p", data);
+	data = luaL_checkudata(L, 1, LUATZ_DATA);
+	lua_pushfstring(L, LUATZ_DATA ": %p", data);
 	return 1;
 }
 
 static int tz_gc (lua_State *L) {
 	struct tz_data  *data;
 
-	data = luaL_checkudata(L, 1, LUATZ_METATABLE);
+	data = luaL_checkudata(L, 1, LUATZ_DATA);
 	free(data->timevalues);
 	free(data->timetypes);
 	free(data->types);
@@ -212,7 +212,7 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 	/* allocate userdata */
 	data = lua_newuserdata(L, sizeof(struct tz_data));
 	memset(data, 0, sizeof(struct tz_data));
-	luaL_getmetatable(L, LUATZ_METATABLE);
+	luaL_getmetatable(L, LUATZ_DATA);
 	lua_setmetatable(L, -2);
 	header = &data->header;
 
@@ -296,15 +296,15 @@ static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) 
 	struct tz_data  *data;
 
 	/* get from TZ table */
-	lua_getfield(L, LUA_REGISTRYINDEX, LUATZ_KEY);
+	lua_getfield(L, LUA_REGISTRYINDEX, LUATZ_CACHE);
 	if (lua_type(L, -1) != LUA_TTABLE) {
 		lua_pop(L, 1);
 		lua_newtable(L);
 		lua_pushvalue(L, -1);
-		lua_setfield(L, LUA_REGISTRYINDEX, LUATZ_KEY);
+		lua_setfield(L, LUA_REGISTRYINDEX, LUATZ_CACHE);
 	}
 	lua_getfield(L, -1, timezone);
-	data = luaL_testudata(L, -1, LUATZ_METATABLE);
+	data = luaL_testudata(L, -1, LUATZ_DATA);
 	if (data) {
 		lua_remove(L, -2);
 		return data;
@@ -632,7 +632,7 @@ int luaopen_tz (lua_State *L) {
 #endif
 
 	/* TZ metatable */	
-	luaL_newmetatable(L, LUATZ_METATABLE);
+	luaL_newmetatable(L, LUATZ_DATA);
 	lua_pushcfunction(L, tz_tostring);
 	lua_setfield(L, -2, "__tostring");
 	lua_pushcfunction(L, tz_gc);
