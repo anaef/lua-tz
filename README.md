@@ -10,13 +10,24 @@ time zone argument.
 
 ## Build, Test, and Install
 
+### Building and Installing with LuaRocks
+
+To build and install with LuaRocks, run:
+
+```
+luarocks install lua-tz
+```
+
+
+### Building, Testing and Installing with Make
+
 Lua TZ comes with a simple Makefile. Please adapt the Makefile, and possibly tz.h, to your
 environment, and then run:
 
 ```
-  make
-  make test
-  make install
+make
+make test
+make install
 ```
 
 ## Release Notes
