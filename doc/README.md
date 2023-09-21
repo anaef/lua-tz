@@ -49,7 +49,7 @@ then the function returns a table similar to `os.date`, but with the following a
 * `zone` (abbreviated time zone name)
 
 
-### `tz.time ([table [, timezone])`
+### `tz.time ([table [, timezone]])`
 
 The function behaves similar to `os.time`, but additionally accepts a time zone.
 
