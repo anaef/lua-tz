@@ -147,15 +147,15 @@ void *luaL_testudata (lua_State *L, int index, const char *name) {
 static int tz_tostring (lua_State *L) {
 	struct tz_data  *data;
 
-	data = luaL_checkudata(L, 1, LUATZ_DATA);
-	lua_pushfstring(L, LUATZ_DATA ": %p", data);
+	data = luaL_checkudata(L, 1, TZ_DATA);
+	lua_pushfstring(L, TZ_DATA ": %p", data);
 	return 1;
 }
 
 static int tz_gc (lua_State *L) {
 	struct tz_data  *data;
 
-	data = luaL_checkudata(L, 1, LUATZ_DATA);
+	data = luaL_checkudata(L, 1, TZ_DATA);
 	free(data->timevalues);
 	free(data->timetypes);
 	free(data->types);
@@ -212,7 +212,7 @@ static void tz_read (lua_State *L, const char *filename, off_t size) {
 	/* allocate userdata */
 	data = lua_newuserdata(L, sizeof(struct tz_data));
 	memset(data, 0, sizeof(struct tz_data));
-	luaL_getmetatable(L, LUATZ_DATA);
+	luaL_getmetatable(L, TZ_DATA);
 	lua_setmetatable(L, -2);
 	header = &data->header;
 
@@ -296,15 +296,15 @@ static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) 
 	struct tz_data  *data;
 
 	/* get from TZ table */
-	lua_getfield(L, LUA_REGISTRYINDEX, LUATZ_CACHE);
+	lua_getfield(L, LUA_REGISTRYINDEX, TZ_CACHE);
 	if (lua_type(L, -1) != LUA_TTABLE) {
 		lua_pop(L, 1);
 		lua_newtable(L);
 		lua_pushvalue(L, -1);
-		lua_setfield(L, LUA_REGISTRYINDEX, LUATZ_CACHE);
+		lua_setfield(L, LUA_REGISTRYINDEX, TZ_CACHE);
 	}
 	lua_getfield(L, -1, timezone);
-	data = luaL_testudata(L, -1, LUATZ_DATA);
+	data = luaL_testudata(L, -1, TZ_DATA);
 	if (data) {
 		lua_remove(L, -2);
 		return data;
@@ -312,12 +312,12 @@ static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) 
 	lua_pop(L, 1);
 
 	/* local time or generic? */
-	if (len == sizeof(LUATZ_LOCALTIME) - 1 && memcmp(timezone, LUATZ_LOCALTIME, len) == 0) {
+	if (len == sizeof(TZ_LOCALTIME) - 1 && memcmp(timezone, TZ_LOCALTIME, len) == 0) {
 		/* local time */
-		memcpy(filename, LUATZ_LOCALFILE, sizeof(LUATZ_LOCALFILE));
+		memcpy(filename, TZ_LOCALFILE, sizeof(TZ_LOCALFILE));
 	} else {
 		/* check timezone length */
-		if (len > sizeof(filename) - sizeof(LUATZ_ZONEINFO)) {
+		if (len > sizeof(filename) - sizeof(TZ_ZONEINFO)) {
 			luaL_error(L, "timezone too long");
 		}
 
@@ -330,8 +330,8 @@ static struct tz_data *tz_data (lua_State *L, const char *timezone, size_t len) 
 		}
 
 		/* make filename */
-		memcpy(filename, LUATZ_ZONEINFO, sizeof(LUATZ_ZONEINFO) - 1);
-		memcpy(filename + sizeof(LUATZ_ZONEINFO) - 1, timezone, len + 1);
+		memcpy(filename, TZ_ZONEINFO, sizeof(TZ_ZONEINFO) - 1);
+		memcpy(filename + sizeof(TZ_ZONEINFO) - 1, timezone, len + 1);
 	}
 
 	/* check file */
@@ -410,7 +410,7 @@ static int tz_info (lua_State *L) {
 		t = (int64_t)luaL_checknumber(L, 1);
 #endif
 	}
-	timezone = luaL_optlstring(L, 2, LUATZ_LOCALTIME, &len);
+	timezone = luaL_optlstring(L, 2, TZ_LOCALTIME, &len);
 
 	/* get time zone data, find type, and return time info */
 	data = tz_data(L, timezone, len);
@@ -443,10 +443,10 @@ static int tz_date (lua_State *L) {
 		t = (int64_t)luaL_checknumber(L, 2);
 #endif
 	}
-	timezone = luaL_optlstring(L, 3, LUATZ_LOCALTIME, &len);
+	timezone = luaL_optlstring(L, 3, TZ_LOCALTIME, &len);
 	if (*format == '!') {
-		timezone = LUATZ_UTC;
-		len = sizeof(LUATZ_UTC) - 1;
+		timezone = TZ_UTC;
+		len = sizeof(TZ_UTC) - 1;
 		format++;
 	}
 
@@ -456,7 +456,7 @@ static int tz_date (lua_State *L) {
 	t += type->gmtoff;
 
 	/* make date */
-	if (t >= LUATZ_J0_TIME) {
+	if (t >= TZ_J0_TIME) {
 		sec = t % 86400;
 		if (sec < 0) {
 			sec += 86400;
@@ -471,7 +471,7 @@ static int tz_date (lua_State *L) {
 		if (t < 0) {
 			t -= 86399;
 		}
-		jd = t / 86400 + LUATZ_EPOCH;  /* Julian day */
+		jd = t / 86400 + TZ_EPOCH;  /* Julian day */
 		l = jd + 68569;
 		n = (4 * l) / 146097;
 		l = l - (146097 * n + 3) / 4;
@@ -547,7 +547,7 @@ static int tz_time (lua_State *L) {
 	} else {
 		/* process arguments */
 		luaL_checktype(L, 1, LUA_TTABLE);
-		timezone = luaL_optlstring(L, 2, LUATZ_LOCALTIME, &len);
+		timezone = luaL_optlstring(L, 2, TZ_LOCALTIME, &len);
 		hastimezone = !lua_isnoneornil(L, 2);
 
 		/* get time in UTC */
@@ -573,13 +573,13 @@ static int tz_time (lua_State *L) {
 		/* source: Henry F. Fliegel, Thomas C. van Flandern:
 		   Letters to the editor: a machine algorithm for processing
 		   calendar dates. Commun. ACM 11(10): 657 (1968) */
-		if (year >= LUATZ_J0_YEAR) {
+		if (year >= TZ_J0_YEAR) {
 			t  = ((1461 * (year + 4800 + (month - 14) / 12)) / 4
 					+ (367 * (month - 2 - 12 * ((month - 14)
 					/ 12))) / 12 - (3 * ((year + 4900
 					+ (month - 14) / 12) / 100)) / 4
 					+ day - 32075     /* Julian day */
-					- LUATZ_EPOCH)    /* epoch */
+					- TZ_EPOCH)    /* epoch */
 					* (int64_t)86400  /* days */
 					+ hour * 3600     /* hours */
 					+ min * 60        /* minutes */
@@ -597,7 +597,7 @@ static int tz_time (lua_State *L) {
 			type = tz_find(data, t, isdst, 1);
 			t -= type->gmtoff;
 		}
-		if (t < LUATZ_J0_TIME) {
+		if (t < TZ_J0_TIME) {
 			lua_pushnil(L);
 			return 1;
 		}
@@ -632,7 +632,7 @@ int luaopen_tz (lua_State *L) {
 #endif
 
 	/* TZ metatable */	
-	luaL_newmetatable(L, LUATZ_DATA);
+	luaL_newmetatable(L, TZ_DATA);
 	lua_pushcfunction(L, tz_tostring);
 	lua_setfield(L, -2, "__tostring");
 	lua_pushcfunction(L, tz_gc);
