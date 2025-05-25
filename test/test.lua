@@ -101,16 +101,16 @@ t.off = nil
 assert(tz.time(t, "America/New_York") == now)
 
 -- Time change to DST
-local t = { tz.info(1396141199) }
+local t = { tz.info(1396141199, "Europe/Zurich") }
 assert(t[1] == 3600)
 assert(t[2] == false)
 assert(t[3] == "CET")
-local t = { tz.info(1396141200) }
+local t = { tz.info(1396141200, "Europe/Zurich") }
 assert(t[1] == 7200)
 assert(t[2] == true)
 assert(t[3] == "CEST")
-assert(tz.date(ISO, 1396141199) == "2014-03-30T01:59:59")
-assert(tz.date(ISO, 1396141200) == "2014-03-30T03:00:00")
+assert(tz.date(ISO, 1396141199, "Europe/Zurich") == "2014-03-30T01:59:59")
+assert(tz.date(ISO, 1396141200, "Europe/Zurich") == "2014-03-30T03:00:00")
 local t = {
 	year = 2014,
 	month = 3,
@@ -126,11 +126,11 @@ t.hour = 3
 assert(tz.time(t, "Europe/Zurich") == 1396141200)
 
 -- Time change to STD
-local t = { tz.info(1382835599) }
+local t = { tz.info(1382835599, "Europe/Zurich") }
 assert(t[1] == 7200)
 assert(t[2] == true)
 assert(t[3] == "CEST")
-local t = { tz.info(1382835600) }
+local t = { tz.info(1382835600, "Europe/Zurich") }
 assert(t[1] == 3600)
 assert(t[2] == false)
 assert(t[3] == "CET")
